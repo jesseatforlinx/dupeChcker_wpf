@@ -1,0 +1,56 @@
+﻿<Window x:Class="DupeChecker.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DupeChecker"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="600" Width="250">
+    <Window.Resources>
+        <Style x:Key="RightAlign" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="路径：" VerticalAlignment="Center"/>
+            <TextBox x:Name="FolderPathBox" Width="150" Margin="5,0"/>
+            <Button Content="选择" Width="40" Click="SelectFolder_Click"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
+            <Button x:Name="BtnSize" Content="按大小" MinWidth="60" Margin="5,0,10,0" Click="SortBySize_Click"/>
+            <Button x:Name="BtnDate" Content="按修改日期" MinWidth="80" Margin="0,0,10,0" Click="SortByDate_Click"/>
+            <Button x:Name="BtnDuration" Content="按时长" MinWidth="60" Click="SortByDuration_Click"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="5,0,0,10">
+            <TextBlock x:Name="FileCountText" Text=" " Width="80"/>
+            <TextBlock x:Name="MostRecentText" Text=" " HorizontalAlignment="Right"/>
+        </StackPanel>
+
+        <ListView x:Name="FileListView" Grid.Row="3" Margin="0" MouseDoubleClick="FileListView_MouseDoubleClick">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="文件名" DisplayMemberBinding="{Binding Name}" Width="70"/>
+                    <GridViewColumn Header="大小" DisplayMemberBinding="{Binding Size}" Width="70"/>
+                    <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Duration}" Width="50"/>
+                    <GridViewColumn Header="操作" Width="40">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="删除" Click="DeleteButton_Click" Tag="{Binding FullPath}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </Grid>
+</Window>
