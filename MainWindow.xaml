@@ -26,9 +26,9 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
-            <Button x:Name="BtnSize" Content="按大小" MinWidth="60" Margin="5,0,10,0" Click="SortBySize_Click"/>
-            <Button x:Name="BtnDate" Content="按修改日期" MinWidth="80" Margin="0,0,10,0" Click="SortByDate_Click"/>
-            <Button x:Name="BtnDuration" Content="按时长" MinWidth="60" Click="SortByDuration_Click"/>
+            <Button x:Name="BtnSize" Content="按大小" MinWidth="60" Margin="5,0,10,0"/>
+            <Button x:Name="BtnDate" Content="按修改日期" MinWidth="80" Margin="0,0,10,0"/>
+            <Button x:Name="BtnDuration" Content="按时长" MinWidth="60" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="5,0,0,10">
@@ -36,7 +36,9 @@
             <TextBlock x:Name="MostRecentText" Text=" " HorizontalAlignment="Right"/>
         </StackPanel>
 
-        <ListView x:Name="FileListView" Grid.Row="3" Margin="0" MouseDoubleClick="FileListView_MouseDoubleClick">
+        <ListView x:Name="FileListView" Grid.Row="3" Margin="0" 
+                  MouseDoubleClick="FileListView_MouseDoubleClick"
+                  GridViewColumnHeader.Click="GridViewColumnHeader_Click">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="文件名" DisplayMemberBinding="{Binding Name}" Width="70"/>

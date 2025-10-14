@@ -1,18 +1,10 @@
-﻿using Microsoft.Win32;
-using Ookii.Dialogs.Wpf;
+﻿using Ookii.Dialogs.Wpf;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-
 namespace DupeChecker
 {   
     public partial class MainWindow : Window
@@ -23,28 +15,7 @@ namespace DupeChecker
         {
             InitializeComponent();
         }
-
-        private void SortBySize_Click(object sender, RoutedEventArgs e)
-        {
-            var sorted = videoFiles.OrderByDescending(f => f.SizeBytes).ToList();
-            videoFiles.Clear();
-            foreach (var v in sorted) videoFiles.Add(v);
-        }
-
-        private void SortByDate_Click(object sender, RoutedEventArgs e)
-        {
-            var sorted = videoFiles.OrderByDescending(f => f.Modified).ToList();
-            videoFiles.Clear();
-            foreach (var v in sorted) videoFiles.Add(v);
-        }
-
-        private void SortByDuration_Click(object sender, RoutedEventArgs e)
-        {
-            var sorted = videoFiles.OrderByDescending(f => f.DurationSeconds).ToList();
-            videoFiles.Clear();
-            foreach (var v in sorted) videoFiles.Add(v);
-        }
-
+                
         private async void SelectFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new VistaFolderBrowserDialog
@@ -83,6 +54,7 @@ namespace DupeChecker
             }
         }
 
+        //双击打开视频文件
         private void FileListView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (FileListView.SelectedItem is VideoFile vf)
@@ -90,6 +62,72 @@ namespace DupeChecker
                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(vf.FullPath) { UseShellExecute = true }); }
                 catch (Exception ex) { MessageBox.Show($"无法打开文件: {ex.Message}"); }
             }
+        }
+
+        private GridViewColumnHeader _lastHeaderClicked = null;
+        private ListSortDirection _lastDirection = ListSortDirection.Ascending;
+        private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (e.OriginalSource is GridViewColumnHeader header && header.Column != null)
+            {
+                string sortBy = header.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
+                ListSortDirection direction;
+
+                if (_lastHeaderClicked == header)
+                {
+                    // 点击同一列，反转排序方向
+                    direction = _lastDirection == ListSortDirection.Ascending
+                        ? ListSortDirection.Descending
+                        : ListSortDirection.Ascending;
+                }
+                else
+                {
+                    // 新列默认升序
+                    direction = ListSortDirection.Descending;
+                }
+
+                Sort(sortBy, direction);
+
+                // 清理上一个箭头
+                if (_lastHeaderClicked != null)
+                {
+                    string oldHeader = _lastHeaderClicked.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
+                    _lastHeaderClicked.Content = oldHeader;
+                }
+
+                // 给当前列加箭头
+                string baseHeader = sortBy;
+                header.Content = $"{baseHeader} {(direction == ListSortDirection.Ascending ? "▲" : "▼")}";
+
+                _lastHeaderClicked = header;
+                _lastDirection = direction;
+            }
+        }
+
+        private void Sort(string sortBy, ListSortDirection direction)
+        {
+            // 拿到当前View
+            ICollectionView dataView = CollectionViewSource.GetDefaultView(FileListView.ItemsSource);
+
+            dataView.SortDescriptions.Clear();
+
+            switch (sortBy)
+            {
+                case "文件名":
+                    dataView.SortDescriptions.Add(new SortDescription(nameof(VideoFile.Name), direction));
+                    break;
+                case "大小":
+                    dataView.SortDescriptions.Add(new SortDescription(nameof(VideoFile.SizeBytes), direction));
+                    break;
+                case "时长":
+                    dataView.SortDescriptions.Add(new SortDescription(nameof(VideoFile.DurationSeconds), direction));
+                    break;
+                case "修改日期":
+                    dataView.SortDescriptions.Add(new SortDescription(nameof(VideoFile.Modified), direction));
+                    break;
+            }
+
+            dataView.Refresh();
         }
 
         private async Task LoadFilesAsync()
@@ -133,9 +171,6 @@ namespace DupeChecker
                     });
                 }
             });
-
-            // ❌ 删除下面这一行，不要再赋值给 ItemsSource
-            // FileListView.ItemsSource = videoFiles.OrderByDescending(f => f.SizeBytes).ToList();
 
             FileCountText.Text = $"{videoFiles.Count} files";
             if (videoFiles.Count > 0)
