@@ -5,54 +5,197 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DupeChecker"
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="250">
+        WindowStyle="None"
+        AllowsTransparency="True"
+        
+        Background="Transparent"
+        Title="Dupe Checker v1.0.1" Height="600" Width="260">
+    
     <Window.Resources>
         <Style x:Key="RightAlign" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Right"/>
         </Style>
+
+        <Style TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="LightBlue"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#b5a5b5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#a698a6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#7f767f"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#6a616a"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#FFAAAAAA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="2" StrokeDashArray="1 2" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" SnapsToDevicePixels="true" StrokeThickness="1"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <SolidColorBrush x:Key="Button.Static.Background" Color="#FFDDDDDD"/>
+        <SolidColorBrush x:Key="Button.Static.Border" Color="#FF707070"/>
+        <SolidColorBrush x:Key="Button.MouseOver.Background" Color="#FFBEE6FD"/>
+        <SolidColorBrush x:Key="Button.MouseOver.Border" Color="#FF3C7FB1"/>
+        <SolidColorBrush x:Key="Button.Pressed.Background" Color="#FFC4E5F6"/>
+        <SolidColorBrush x:Key="Button.Pressed.Border" Color="#FF2C628B"/>
+        <SolidColorBrush x:Key="Button.Disabled.Background" Color="#FFF4F4F4"/>
+        <SolidColorBrush x:Key="Button.Disabled.Border" Color="#FFADB2B5"/>
+        <SolidColorBrush x:Key="Button.Disabled.Foreground" Color="#FF838383"/>
+        <Style x:Key="ButtonStyle1" TargetType="{x:Type Button}">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
+            <Setter Property="Background" Value="{StaticResource Button.Static.Background}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Button.Static.Border}"/>
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+            <Setter Property="BorderThickness" Value="0.6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" SnapsToDevicePixels="true" CornerRadius="3">
+                            <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsDefaulted" Value="true">
+                                <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter Property="Background" TargetName="border" Value="{StaticResource Button.MouseOver.Background}"/>
+                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.MouseOver.Border}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="true">
+                                <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Pressed.Background}"/>
+                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Pressed.Border}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter Property="Background" TargetName="border" Value="{StaticResource Button.Disabled.Background}"/>
+                                <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.Disabled.Border}"/>
+                                <Setter Property="TextElement.Foreground" TargetName="contentPresenter" Value="{StaticResource Button.Disabled.Foreground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Border BorderBrush="Gray" BorderThickness="0.5" CornerRadius="5" Background="#01000000">       
+        <Grid>
+            <!-- 自定义标题栏 -->
+            <Border Height="25" VerticalAlignment="Top" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Dupe Checker v1.0.1" Foreground="Black" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="—" Width="25" Style="{StaticResource TitleBarButtonStyle}" Click="Minimize_Click"/>
+                        <Button Content="□" Width="25" Style="{StaticResource TitleBarButtonStyle}" Margin="2,0,0,0" Click="Maximize_Click"/>
+                        <Button Content="✕" Width="25" Style="{StaticResource TitleBarButtonStyle}" Margin="2,0,0,0" Click="Close_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Grid Margin="0,25,0,0" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBlock Text="路径：" VerticalAlignment="Center"/>
-            <TextBox x:Name="FolderPathBox" Width="150" Margin="5,0"/>
-            <Button Content="选择" Width="40" Click="SelectFolder_Click"/>
-        </StackPanel>
+                <Grid Margin="5,10,5,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- 路径文本 -->
+                        <ColumnDefinition Width="*"/>
+                        <!-- 文本框固定宽 -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- 按钮宽度自适应 -->
+                    </Grid.ColumnDefinitions>
 
-        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
-            <Button x:Name="BtnSize" Content="按大小" MinWidth="60" Margin="5,0,10,0"/>
-            <Button x:Name="BtnDate" Content="按修改日期" MinWidth="80" Margin="0,0,10,0"/>
-            <Button x:Name="BtnDuration" Content="按时长" MinWidth="60" />
-        </StackPanel>
+                    <TextBlock Text="路径:" VerticalAlignment="Center" Grid.Column="0" Margin="0,0,5,0"/>
 
-        <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="5,0,0,10">
-            <TextBlock x:Name="FileCountText" Text=" " Width="80"/>
-            <TextBlock x:Name="MostRecentText" Text=" " HorizontalAlignment="Right"/>
-        </StackPanel>
+                    <TextBox x:Name="FolderPathBox" 
+                        Grid.Column="1"
+                        MinWidth="150"
+                        PreviewMouseLeftButtonDown="FolderPathBox_PreviewMouseLeftButtonDown"
+                        MouseDoubleClick="FolderPathBox_MouseDoubleClick"/>
 
-        <ListView x:Name="FileListView" Grid.Row="3" Margin="0" 
-                  MouseDoubleClick="FileListView_MouseDoubleClick"
-                  GridViewColumnHeader.Click="GridViewColumnHeader_Click">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="文件名" DisplayMemberBinding="{Binding Name}" Width="70"/>
-                    <GridViewColumn Header="大小" DisplayMemberBinding="{Binding Size}" Width="70"/>
-                    <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Duration}" Width="50"/>
-                    <GridViewColumn Header="操作" Width="40">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <Button Content="删除" Click="DeleteButton_Click" Tag="{Binding FullPath}" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>
-    </Grid>
+                    <Button Content="选择" 
+                        Style="{DynamicResource ButtonStyle1}"
+                        Grid.Column="2" 
+                        Width="40" 
+                        Click="SelectFolder_Click" 
+                        Margin="5,0,0,0"/>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,0,0,5">
+                    <Button Style="{DynamicResource ButtonStyle1}" x:Name="BtnSort" Content="Go" MinWidth="120" HorizontalAlignment="Center" Click="BtnSort_Click"/>
+                </Grid>
+
+                <Grid Grid.Row="2" Margin="5,0,5,5">
+                    <TextBlock x:Name="FileCountText" Text=" " Grid.Column="0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="MostRecentText" Text=" " Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+
+                <ListView x:Name="FileListView" Grid.Row="3" Margin="0" 
+                          BorderThickness="0"
+                          Background="Transparent"
+                          MouseDoubleClick="FileListView_MouseDoubleClick"
+                          GridViewColumnHeader.Click="GridViewColumnHeader_Click">
+
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="文件名" DisplayMemberBinding="{Binding Name}" Width="70"/>
+                            <GridViewColumn Header="大小" DisplayMemberBinding="{Binding Size}" Width="70"/>
+                            <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Duration}" Width="50"/>
+                            <GridViewColumn Header="操作" Width="40">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="删除" Style="{DynamicResource ButtonStyle1}" Click="DeleteButton_Click" Tag="{Binding FullPath}" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

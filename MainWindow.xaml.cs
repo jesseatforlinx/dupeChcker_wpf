@@ -1,10 +1,18 @@
 ﻿using Ookii.Dialogs.Wpf;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+
 namespace DupeChecker
 {   
     public partial class MainWindow : Window
@@ -14,6 +22,9 @@ namespace DupeChecker
         public MainWindow()
         {
             InitializeComponent();
+            ApplyWindowClip();
+            Loaded += (_, __) => EnableBlur();
+            
         }
                 
         private async void SelectFolder_Click(object sender, RoutedEventArgs e)
@@ -28,6 +39,40 @@ namespace DupeChecker
             {
                 FolderPathBox.Text = dialog.SelectedPath;
                 await LoadFilesAsync();
+            }
+        }        
+
+        private void FolderPathBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBox tb && !tb.IsKeyboardFocusWithin)
+            {
+                e.Handled = true; // 阻止默认点击行为
+                tb.Focus();       // 设置焦点
+                tb.SelectAll();   // 全选内容
+            }
+        }
+
+        private void FolderPathBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            TextBox tb = sender as TextBox;
+            if (tb != null)
+            {
+                tb.SelectAll();
+            }
+        }
+
+        private async void Sort_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadFilesAsync();
+        }
+
+        //双击打开视频文件
+        private void FileListView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (FileListView.SelectedItem is VideoFile vf)
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(vf.FullPath) { UseShellExecute = true }); }
+                catch (Exception ex) { MessageBox.Show($"无法打开文件: {ex.Message}"); }
             }
         }
 
@@ -44,6 +89,7 @@ namespace DupeChecker
                         if (itemToRemove != null)
                         {
                             videoFiles.Remove(itemToRemove);
+                            UpdateFileStats();
                         }
                     }
                     catch (Exception ex)
@@ -54,16 +100,6 @@ namespace DupeChecker
             }
         }
 
-        //双击打开视频文件
-        private void FileListView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (FileListView.SelectedItem is VideoFile vf)
-            {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(vf.FullPath) { UseShellExecute = true }); }
-                catch (Exception ex) { MessageBox.Show($"无法打开文件: {ex.Message}"); }
-            }
-        }
-
         private GridViewColumnHeader _lastHeaderClicked = null;
         private ListSortDirection _lastDirection = ListSortDirection.Ascending;
         private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
@@ -71,37 +107,49 @@ namespace DupeChecker
             if (e.OriginalSource is GridViewColumnHeader header && header.Column != null)
             {
                 string sortBy = header.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
-                ListSortDirection direction;
 
-                if (_lastHeaderClicked == header)
-                {
-                    // 点击同一列，反转排序方向
-                    direction = _lastDirection == ListSortDirection.Ascending
-                        ? ListSortDirection.Descending
-                        : ListSortDirection.Ascending;
-                }
-                else
-                {
-                    // 新列默认升序
-                    direction = ListSortDirection.Descending;
-                }
+                // 决定排序方向
+                ListSortDirection direction = GetSortDirection(header);
 
+                // 排序数据
                 Sort(sortBy, direction);
 
-                // 清理上一个箭头
-                if (_lastHeaderClicked != null)
-                {
-                    string oldHeader = _lastHeaderClicked.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
-                    _lastHeaderClicked.Content = oldHeader;
-                }
-
-                // 给当前列加箭头
-                string baseHeader = sortBy;
-                header.Content = $"{baseHeader} {(direction == ListSortDirection.Ascending ? "▲" : "▼")}";
-
-                _lastHeaderClicked = header;
-                _lastDirection = direction;
+                // 更新箭头显示
+                UpdateHeaderArrow(header, direction);
             }
+        }
+
+        /// <summary>
+        /// 根据点击的列决定排序方向
+        /// </summary>
+        private ListSortDirection GetSortDirection(GridViewColumnHeader header)
+        {
+            if (_lastHeaderClicked == header)
+                return _lastDirection == ListSortDirection.Ascending
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
+
+            return ListSortDirection.Descending; // 新列默认降序
+        }
+
+        /// <summary>
+        /// 更新箭头显示
+        /// </summary>
+        private void UpdateHeaderArrow(GridViewColumnHeader header, ListSortDirection direction)
+        {
+            // 清理上一个箭头
+            if (_lastHeaderClicked != null)
+            {
+                string oldHeader = _lastHeaderClicked.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
+                _lastHeaderClicked.Content = oldHeader;
+            }
+
+            // 给当前列加箭头
+            string baseHeader = header.Content.ToString().Replace("▲", "").Replace("▼", "").Trim();
+            header.Content = $"{baseHeader} {(direction == ListSortDirection.Ascending ? "▲" : "▼")}";
+
+            _lastHeaderClicked = header;
+            _lastDirection = direction;
         }
 
         private void Sort(string sortBy, ListSortDirection direction)
@@ -139,44 +187,74 @@ namespace DupeChecker
                 return;
             }
 
-            string[] exts = { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".ts", ".m4v" };
-            var files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories)
-                                 .Where(f => exts.Contains(System.IO.Path.GetExtension(f).ToLower()))
-                                 .ToList();
-
+            var files = GetVideoFiles(folderPath);
             videoFiles.Clear();
             FileListView.ItemsSource = videoFiles; // 只绑定一次
 
-            await Task.Run(() =>
+            var videoFileList = await Task.Run(() => LoadVideoFileMetadata(files));
+            // 默认排序
+            var sortedList = videoFileList.OrderByDescending(v => v.DurationSeconds).ToList();
+
+            // 更新 UI
+            foreach (var vf in sortedList)
+                videoFiles.Add(vf);
+
+            UpdateFileStats();
+        }
+
+        /// <summary>
+        /// 获取指定目录及子目录下的所有视频文件路径
+        /// </summary>
+        private List<string> GetVideoFiles(string folderPath)
+        {
+            string[] exts = { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".ts", ".m4v" };
+            return Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories)
+                            .Where(f => exts.Contains(Path.GetExtension(f).ToLower()))
+                            .ToList();
+        }
+
+        /// <summary>
+        /// 并行读取视频文件元数据
+        /// </summary>
+        private List<VideoFile> LoadVideoFileMetadata(List<string> files)
+        {
+            var list = new System.Collections.Concurrent.ConcurrentBag<VideoFile>();
+
+            System.Threading.Tasks.Parallel.ForEach(files, file =>
             {
-                foreach (var file in files)
+                try
                 {
                     long sizeBytes = new FileInfo(file).Length;
-                    string duration = null;
+                    int durationSeconds = TagLibReader.GetDurationSeconds(file);
+                    string duration = TagLibReader.GetFormattedDuration(file);
 
-                    // 在 UI 线程调用 COM
-                    Application.Current.Dispatcher.Invoke(() =>
+                    list.Add(new VideoFile
                     {
-                        duration = ShellPropertyReader.GetFormattedDuration(file);
-                        videoFiles.Add(new VideoFile
-                        {
-                            Name = System.IO.Path.GetFileName(file),
-                            FullPath = file,
-                            Size = FormatSize(sizeBytes),
-                            SizeBytes = sizeBytes,
-                            Duration = duration,
-                            DurationSeconds = ConvertDurationToSeconds(duration),
-                            Modified = File.GetLastWriteTime(file)
-                        });
+                        Name = Path.GetFileName(file),
+                        FullPath = file,
+                        Size = FormatSize(sizeBytes),
+                        SizeBytes = sizeBytes,
+                        Duration = duration,
+                        DurationSeconds = durationSeconds,
+                        Modified = File.GetLastWriteTime(file)
                     });
                 }
+                catch { }
             });
 
+            return list.ToList();
+        }
+
+        /// <summary>
+        /// 更新文件数量和最近修改日期显示
+        /// </summary>
+        private void UpdateFileStats()
+        {
             FileCountText.Text = $"{videoFiles.Count} files";
             if (videoFiles.Count > 0)
             {
                 var recent = videoFiles.Max(f => f.Modified);
-                MostRecentText.Text = $"Last: {recent:MMM dd, yyyy}";
+                MostRecentText.Text = $"Last: {recent.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}";
             }
         }
 
@@ -188,18 +266,120 @@ namespace DupeChecker
                 return $"{bytes / (1024.0 * 1024):F1} MB";
         }
 
-        private static int ConvertDurationToSeconds(string duration)
+        private void Minimize_Click(object sender, RoutedEventArgs e)
         {
-            try
+            var anim = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromMilliseconds(120)));
+            anim.Completed += (s, _) =>
             {
-                var parts = duration.Split(':').Select(int.Parse).ToArray();
-                if (parts.Length == 3)
-                    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-                if (parts.Length == 2)
-                    return parts[0] * 60 + parts[1];
+                // 用 BeginInvoke 延迟到下一帧执行最小化
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    this.BeginAnimation(Window.OpacityProperty, null); // 停止动画
+                    this.Opacity = 1;
+                    this.WindowState = WindowState.Minimized;
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            };
+            this.BeginAnimation(Window.OpacityProperty, anim);
+        }
+        private void Maximize_Click(object sender, RoutedEventArgs e) => this.WindowState = this.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        private void Close_Click(object sender, RoutedEventArgs e) => this.Close();
+
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2) // 双击最大化/还原
+            {
+                WindowState = WindowState == WindowState.Normal ? WindowState.Maximized : WindowState.Normal;
             }
-            catch { }
-            return 0;
+            else
+            {
+                DragMove();
+            }
+        }
+
+        #region 窗口样式
+        private void ApplyWindowClip()
+        {
+            var radius = 5; // 圆角半径
+            var rect = new RectangleGeometry();
+            rect.RadiusX = radius;
+            rect.RadiusY = radius;
+            rect.Rect = new Rect(0, 0, this.Width, this.Height);
+            this.Clip = rect;
+
+            // 窗口大小改变时也要更新
+            this.SizeChanged += (s, e) =>
+            {
+                rect.Rect = new Rect(0, 0, this.ActualWidth, this.ActualHeight);
+            };
+        }
+
+        private void EnableBlur()
+        {
+            var windowHelper = new WindowInteropHelper(this);
+
+            var accent = new AccentPolicy();
+            accent.AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND;
+           
+            accent.GradientColor = unchecked((int)0xD9F3F1F1); ;
+
+
+
+            int sizeOfAccent = Marshal.SizeOf(accent);
+            IntPtr accentPtr = Marshal.AllocHGlobal(sizeOfAccent);
+            Marshal.StructureToPtr(accent, accentPtr, false);
+
+            var data = new WindowCompositionAttributeData
+            {
+                Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY,
+                SizeOfData = sizeOfAccent,
+                Data = accentPtr
+            };
+
+            SetWindowCompositionAttribute(windowHelper.Handle, ref data);
+
+            Marshal.FreeHGlobal(accentPtr);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct AccentPolicy
+        {
+            public AccentState AccentState;
+            public int AccentFlags;
+            public int GradientColor;
+            public int AnimationId;
+        }
+
+        private enum AccentState
+        {
+            ACCENT_DISABLED = 0,
+            ACCENT_ENABLE_GRADIENT = 1,
+            ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
+            ACCENT_ENABLE_BLURBEHIND = 3,
+            ACCENT_ENABLE_ACRYLICBLURBEHIND = 4, // Windows 10 1803+
+            ACCENT_ENABLE_HOSTBACKDROP = 5
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WindowCompositionAttributeData
+        {
+            public WindowCompositionAttribute Attribute;
+            public IntPtr Data;
+            public int SizeOfData;
+        }
+
+        private enum WindowCompositionAttribute
+        {
+            WCA_ACCENT_POLICY = 19
+        }
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+        #endregion
+
+        private async void BtnSort_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadFilesAsync();
         }
     }
 }
