@@ -24,9 +24,25 @@ namespace DupeChecker
             InitializeComponent();
             ApplyWindowClip();
             Loaded += (_, __) => EnableBlur();
-            
+
+            this.Top = Properties.Settings.Default.WindowTop;
+            this.Left = Properties.Settings.Default.WindowLeft;
         }
-                
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+
+            // 只有窗口不是最小化状态时保存
+            if (this.WindowState == WindowState.Normal)
+            {
+                Properties.Settings.Default.WindowTop = this.Top;
+                Properties.Settings.Default.WindowLeft = this.Left;                
+            }
+            
+            Properties.Settings.Default.Save();
+        }
+
         private async void SelectFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new VistaFolderBrowserDialog
