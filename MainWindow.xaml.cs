@@ -3,14 +3,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace DupeChecker
@@ -22,8 +18,7 @@ namespace DupeChecker
         public MainWindow()
         {
             InitializeComponent();
-            ApplyWindowClip();
-            Loaded += (_, __) => EnableBlur();
+            
 
             this.Top = Properties.Settings.Default.WindowTop;
             this.Left = Properties.Settings.Default.WindowLeft;
@@ -54,7 +49,19 @@ namespace DupeChecker
             if(dialog.ShowDialog(this) == true)
             {
                 FolderPathBox.Text = dialog.SelectedPath;
+
+                BtnSort.IsEnabled = false;
+                BtnSort.Content = "Loading...";
+
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 await LoadFilesAsync();
+                sw.Stop();
+
+                BtnSort.Content = $"用时 {sw.Elapsed.TotalSeconds:F2} 秒";
+                await Task.Delay(2000);
+
+                BtnSort.Content = "Go";
+                BtnSort.IsEnabled = true;
             }
         }        
 
@@ -77,18 +84,46 @@ namespace DupeChecker
             }
         }
 
-        private async void Sort_Click(object sender, RoutedEventArgs e)
+        private async void BtnSort_Click(object sender, RoutedEventArgs e)
         {
-            await LoadFilesAsync();
-        }
+            BtnSort.IsEnabled = false;
+            BtnSort.Content = "Loading...";
 
-        //双击打开视频文件
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            await LoadFilesAsync();
+            sw.Stop();
+
+            BtnSort.Content = $"用时 {sw.Elapsed.TotalSeconds:F2} 秒";
+            await Task.Delay(2000);
+
+            BtnSort.Content = "Go";
+            BtnSort.IsEnabled = true;
+        }
+        
         private void FileListView_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (FileListView.SelectedItem is VideoFile vf)
             {
                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(vf.FullPath) { UseShellExecute = true }); }
                 catch (Exception ex) { MessageBox.Show($"无法打开文件: {ex.Message}"); }
+            }
+        }
+
+        private void FileCell_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBlock tb && tb.DataContext is VideoFile vf)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(vf.FullPath)
+                    {
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"无法打开文件: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
@@ -282,6 +317,7 @@ namespace DupeChecker
                 return $"{bytes / (1024.0 * 1024):F1} MB";
         }
 
+        #region Window top bar
         private void Minimize_Click(object sender, RoutedEventArgs e)
         {
             var anim = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromMilliseconds(120)));
@@ -311,91 +347,7 @@ namespace DupeChecker
                 DragMove();
             }
         }
-
-        #region 窗口样式
-        private void ApplyWindowClip()
-        {
-            var radius = 5; // 圆角半径
-            var rect = new RectangleGeometry();
-            rect.RadiusX = radius;
-            rect.RadiusY = radius;
-            rect.Rect = new Rect(0, 0, this.Width, this.Height);
-            this.Clip = rect;
-
-            // 窗口大小改变时也要更新
-            this.SizeChanged += (s, e) =>
-            {
-                rect.Rect = new Rect(0, 0, this.ActualWidth, this.ActualHeight);
-            };
-        }
-
-        private void EnableBlur()
-        {
-            var windowHelper = new WindowInteropHelper(this);
-
-            var accent = new AccentPolicy();
-            accent.AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND;
-           
-            accent.GradientColor = unchecked((int)0xD9F3F1F1); ;
-
-
-
-            int sizeOfAccent = Marshal.SizeOf(accent);
-            IntPtr accentPtr = Marshal.AllocHGlobal(sizeOfAccent);
-            Marshal.StructureToPtr(accent, accentPtr, false);
-
-            var data = new WindowCompositionAttributeData
-            {
-                Attribute = WindowCompositionAttribute.WCA_ACCENT_POLICY,
-                SizeOfData = sizeOfAccent,
-                Data = accentPtr
-            };
-
-            SetWindowCompositionAttribute(windowHelper.Handle, ref data);
-
-            Marshal.FreeHGlobal(accentPtr);
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct AccentPolicy
-        {
-            public AccentState AccentState;
-            public int AccentFlags;
-            public int GradientColor;
-            public int AnimationId;
-        }
-
-        private enum AccentState
-        {
-            ACCENT_DISABLED = 0,
-            ACCENT_ENABLE_GRADIENT = 1,
-            ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
-            ACCENT_ENABLE_BLURBEHIND = 3,
-            ACCENT_ENABLE_ACRYLICBLURBEHIND = 4, // Windows 10 1803+
-            ACCENT_ENABLE_HOSTBACKDROP = 5
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct WindowCompositionAttributeData
-        {
-            public WindowCompositionAttribute Attribute;
-            public IntPtr Data;
-            public int SizeOfData;
-        }
-
-        private enum WindowCompositionAttribute
-        {
-            WCA_ACCENT_POLICY = 19
-        }
-
-        [DllImport("user32.dll")]
-        private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
-
         #endregion
 
-        private async void BtnSort_Click(object sender, RoutedEventArgs e)
-        {
-            await LoadFilesAsync();
-        }
     }
 }
